@@ -57,15 +57,6 @@ let loadAllFiles() : List<MissionCategory> =
     Serializer.LoadFile(missionsFile)
 
 
-// let mutable main_list = Unchecked.defaultof<List<string>>
-
-// let remove_element(i: int) =
-//     try main_list.RemoveAt(i) with
-//         | _ -> printfn "Could not remove element"
-
-// let add_element(s: string) =
-//     try main_list.Insert(main_list.Count, s) with
-//         | _ -> printfn "Could not insert element"
 
 let matchParameters(args: string[]) =
     match args.[0] with
@@ -138,12 +129,17 @@ let matchParameters(args: string[]) =
             else
                 printfn "Second or third argument was not a number."
 
+    // UP-PRIORITIZE A MISSION
     | "up" ->
         // TODO: move a mission up in the priority queue
         ()
+
+    // DOWN-PRIORITIZE A MISSION
     | "down" ->
         // TODO: move a mission down in the priority queue
         ()
+
+    // PRINT THE HELP MENU
     | "help" ->
         // TODO: print usage of this program
         let mutable help = System.Text.StringBuilder()
@@ -186,6 +182,7 @@ let matchParameters(args: string[]) =
 
         printf "%s\n" <| help.ToString()
 
+    // INVALID INPUT
     | _ as k ->
         printfn "Instruction not recognized (see \"help\")"
 
@@ -209,24 +206,3 @@ let main(args: string[]) =
     else
         matchParameters(args)
         0
-
-    //     match args.[0] with
-    //         | "all" ->
-    //             Seq.fold (fun acc elem -> printfn "%i) %s" acc elem; acc + 1) 1 main_list
-    //             |> ignore
-
-    //         | "done" ->
-    //             if args.Length <> 2 then
-    //                 printfn "Provide the number to which mission should be removed."
-    //             else
-    //                 let index = ref 0
-    //                 if Int32.TryParse(args.[1], index) then
-    //                     remove_element(!index - 1)
-    //                     save_file()
-    //                 else
-    //                     printfn "Second argument was not a number."
-
-    //         | "new" ->
-    //             printf "New mission: "
-    //             Console.ReadLine() |> add_element
-    //             save_file()
