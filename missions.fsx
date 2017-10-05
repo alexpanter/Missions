@@ -35,6 +35,26 @@ type MissionCategory = {mutable title: string; list: List<Mission>} with
         match m with
         | s -> this.list.Add(Mission.CreateNew(m))
 
+    member this.MoveUp(i: int) =
+        let len = this.list.Count
+        if i <= 0 || i >= len then
+            false
+        else
+            let copy : Mission = this.list.[i]
+            this.list.[i] <- this.list.[i - 1]
+            this.list.[i - 1] <- copy
+            true
+
+    member this.MoveDown(i: int) =
+        let len = this.list.Count
+        if i < 0 || i >= len - 1 then
+            false
+        else
+            let copy : Mission = this.list.[i]
+            this.list.[i] <- this.list.[i + 1]
+            this.list.[i + 1] <- copy
+            true
+
     static member CreateNew(c: CategoryConstructor) : MissionCategory =
         match c with
         | s -> {title = s; list = new List<Mission>()}
@@ -74,15 +94,6 @@ let matchParameters(args: string[]) =
                 for j in 0..lst.Count-1 do
                     printfn "      %-4s%A" (sprintf "%i)" (j+1)) (lst.Item(j)).description
 
-    // PRINT NAMES OF ALL CATEGORIES (kind of useless ??)
-    | "categories" ->
-        if args.Length <> 1 then
-            printfn "this commands takes no parameters."
-        else
-            // TODO: print names of all categories
-
-            ()
-
     // CREATE CATEGORY
     | "create" ->
         if args.Length <> 2 then
@@ -118,7 +129,6 @@ let matchParameters(args: string[]) =
         if args.Length <> 3 then
             printfn "you must provide 2 arguments. See \"help\""
         else
-            // TODO: remove the specified mission from its category
             // TODO: might check for indexing out of bounds
             let categories : List<MissionCategory> = loadAllFiles()
             let (index1, index2) = (ref -1, ref -1)
@@ -131,13 +141,33 @@ let matchParameters(args: string[]) =
 
     // UP-PRIORITIZE A MISSION
     | "up" ->
-        // TODO: move a mission up in the priority queue
-        ()
+        if args.Length <> 3 then
+            printfn "you must provide 2 arguments. See \"help\""
+        else
+            // TODO: might check for indexing out of bounds
+            let categories : List<MissionCategory> = loadAllFiles()
+            let (index1, index2) = (ref -1, ref -1)
+            if Int32.TryParse(args.[1], index1) && Int32.TryParse(args.[2], index2) then
+                let cat = categories.[!index1 - 1]
+                cat.MoveUp(!index2 - 1) |> ignore  // TODO: use return value
+                Serializer.SaveFile(categories)
+            else
+                printfn "Second or third argument was not a number."
 
     // DOWN-PRIORITIZE A MISSION
     | "down" ->
-        // TODO: move a mission down in the priority queue
-        ()
+        if args.Length <> 3 then
+            printfn "you must provide 2 arguments. See \"help\""
+        else
+            // TODO: might check for indexing out of bounds
+            let categories : List<MissionCategory> = loadAllFiles()
+            let (index1, index2) = (ref -1, ref -1)
+            if Int32.TryParse(args.[1], index1) && Int32.TryParse(args.[2], index2) then
+                let cat = categories.[!index1 - 1]
+                cat.MoveDown(!index2 - 1) |> ignore  // TODO: use return value
+                Serializer.SaveFile(categories)
+            else
+                printfn "Second or third argument was not a number."
 
     // PRINT THE HELP MENU
     | "help" ->
@@ -149,7 +179,7 @@ let matchParameters(args: string[]) =
         let len = min(80, width)
 
         let app opt (msg: string) =
-            let optTxt = sprintf "%4s%-24s" "" opt
+            let optTxt = sprintf "%4s%-26s" "" opt
             let optLen = optTxt.Length
 
             help <- help.Append (optTxt)
@@ -172,13 +202,15 @@ let matchParameters(args: string[]) =
 
         help <- help.Append "Usage: missions COMMANDS\n\nAvailable commands:\n"
         app "all" "list all missions"
-        app "categories" "show names of categories"
-        app "done CATEGORY NUMBER" "remove mission NUMBER from CATEGORY permanently -- UNIMPLEMENTED"
-        app "create CATEGORY" "create a new category with the title CATEGORY"
-        app "new CATEGORY" "add a new mission to CATEGORY -- UNIMPLEMENTED"
-        app "up CATEGORY NUMBER" "move mission NUMBER up in the priority queue of CATEGORY -- UNIMPLEMENTED"
-        app "down CATEGORY NUMBER" "move mission NUMBER down in the priority queue of CATEGORY -- UNIMPLEMENTED"
+        app "create TITLE" "create a new category with the given TITLE"
+        app "delete NUMBER" "permanently delete the category NUMBER"
+        app "new NUMBER" "add a new mission to category NUMBER"
+        app "done NUMBER(1) NUMBER(2)" "remove mission NUMBER(2) from category NUMBER(1) permanently"
+        app "up NUMBER(1) NUMBER(2)" "up-prioritize mission NUMBER(2) within category NUMBER(1)"
+        app "down NUMBER(1) NUMBER(2)" "down-prioritize mission NUMBER(2) within category NUMBER(1)"
         app "help" "show this help message"
+
+        help <- help.Append "\nFound a bug / suggest a feature: <https://github.com/alexpanter/Missions>"
 
         printf "%s\n" <| help.ToString()
 
