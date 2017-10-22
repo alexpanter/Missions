@@ -5,8 +5,12 @@ open System.Runtime.Serialization.Formatters // .Binary
 
 
 
+(****    SERIALIZE TO THIS FILE    ****)
 let missionsFile = Path.Combine(__SOURCE_DIRECTORY__, ".missions.ms")
 
+
+
+(****    LIST OF CATEGORIES AND THEIR MISSIONS    ****)
 type MissionConstructor = string
 type CategoryConstructor = string
 
@@ -60,6 +64,9 @@ type MissionCategory = {mutable title: string; list: List<Mission>} with
         | s -> {title = s; list = new List<Mission>()}
 end
 
+
+
+(****    SERIALIZATION MECHANISMS    ****)
 type Serializer() = class
     static let s = Binary.BinaryFormatter()
     static member serializer() = s
@@ -78,36 +85,96 @@ let loadAllFiles() : List<MissionCategory> =
 
 
 
-let matchParameters(args: string[]) =
+(****    UTILITY FUNCTIONS    ****)
+let max (a, b) = if a > b then a else b
+let min (a, b) = if a < b then a else b
+
+
+
+
+(****    MATCHING COMMAND LINE ARGUMENTS    ****)
+let matchArgs(args: string[]) =
     match args.[0] with
 
     // PRINT ALL CATEGORIES AND THEIR CONTAINED MISSIONS
     | "all" ->
         if args.Length <> 1 then
-            printfn "this commands takes no parameters."
+            printfn "this commands takes no parameters. See \"help\""
         else
             let categories : List<MissionCategory> = loadAllFiles()
             let mutable i = 0
+            let width = min(System.Console.WindowWidth, 80)
+            let numberLength = 4
+            let leftMarginLength = 6 + numberLength
+            let mutable msg = System.Text.StringBuilder()
+
+            // print each category
             for i in 0..categories.Count-1 do
-                printfn "%-4s%s :" (sprintf "%i)" (i+1)) categories.[i].Title
+                msg <- msg.Append (sprintf "%-4s%s :\n" (sprintf "%i)" (i+1))
+                                                        categories.[i].Title)
                 let lst = categories.[i].List()
+
+                // print each mission
                 for j in 0..lst.Count-1 do
-                    printfn "      %-4s%A" (sprintf "%i)" (j+1)) (lst.Item(j)).description
+                    msg <- msg.Append (sprintf "      %-4s" (sprintf "%i)" (j+1)))
+                    let words: string[] = lst.Item(j).description.Split(' ')
+                    let mutable len = leftMarginLength
+
+                    // print each word
+                    for word in words do
+                        let newLine = len + word.Length >= width
+
+                        if newLine then
+                            msg <- msg.Append "\n"
+                            msg <- msg.Append (String.init leftMarginLength
+                                                           (fun _ -> " "))
+                            len <- leftMarginLength
+
+                        msg <- msg.Append (word + " ")
+                        len <- len + word.Length + 1
+
+                    msg <- msg.Append "\n"
+
+                //msg <- msg.Append "\n"
+
+            msg.ToString() |> printfn "%s"
 
     // CREATE CATEGORY
     | "create" ->
-        if args.Length <> 2 then
-            printfn "you must provide 1 argument. See \"help\""
+        if args.Length <> 1 then
+            printfn "this commands takes no parameters. See \"help\""
         else
             let categories : List<MissionCategory> = loadAllFiles()
-            let cat = MissionCategory.CreateNew(args.[1])
-            categories.Add(cat)
-            Serializer.SaveFile(categories)
+            printf "New category: "
+            let text = Console.ReadLine()
+            if text.Length > 0 then
+                let cat = MissionCategory.CreateNew(text)
+                categories.Add(cat)
+                Serializer.SaveFile(categories)
+            else
+                printfn "Category description was empty.."
 
     // DELETE CATEGORY
     | "delete" ->
         // TODO: delete a category
-        ()
+        if args.Length <> 2 then
+            printfn "you must provide 1 argument. See \"help\""
+        else
+            let categories : List<MissionCategory> = loadAllFiles()
+            let index = ref -1
+            let mutable delete = false
+            if Int32.TryParse(args.[1], index) then
+                if not <| Seq.isEmpty (categories.[!index - 1].List()) then
+                    printf "This category contains unfinished missions. Delete? (y/n) "
+                    match char <| Console.Read() with
+                        | 'y' | 'Y' -> delete <- true
+                        | _         -> ()
+                    printfn ""
+                else delete <- true
+
+            if delete then
+                categories.RemoveAt(!index - 1)
+                Serializer.SaveFile(categories)
 
     // ADD NEW MISSION
     | "new" ->
@@ -119,8 +186,12 @@ let matchParameters(args: string[]) =
             if Int32.TryParse(args.[1], index) then
                 let h = categories.[!index - 1]
                 printf "New mission: "
-                h.Insert (Console.ReadLine())
-                Serializer.SaveFile(categories)
+                let text = Console.ReadLine()
+                if text.Length > 0 then
+                    h.Insert (text)
+                    Serializer.SaveFile(categories)
+                else
+                    printfn "Mission description was empty.."
             else
                 printfn "Second argument was not a number."
 
@@ -171,11 +242,8 @@ let matchParameters(args: string[]) =
 
     // PRINT THE HELP MENU
     | "help" ->
-        // TODO: print usage of this program
         let mutable help = System.Text.StringBuilder()
         let width = System.Console.BufferWidth
-        let max (a, b) = if a > b then a else b
-        let min (a, b) = if a < b then a else b
         let len = min(80, width)
 
         let app opt (msg: string) =
@@ -202,7 +270,7 @@ let matchParameters(args: string[]) =
 
         help <- help.Append "Usage: missions COMMANDS\n\nAvailable commands:\n"
         app "all" "list all missions"
-        app "create TITLE" "create a new category with the given TITLE"
+        app "create" "create a new missions category"
         app "delete NUMBER" "permanently delete the category NUMBER"
         app "new NUMBER" "add a new mission to category NUMBER"
         app "done NUMBER(1) NUMBER(2)" "remove mission NUMBER(2) from category NUMBER(1) permanently"
@@ -220,6 +288,8 @@ let matchParameters(args: string[]) =
 
 
 
+
+(****    MAIN FUNCTION AND ENTRY POINT    ****)
 [<EntryPoint>]
 let main(args: string[]) =
 
@@ -236,5 +306,5 @@ let main(args: string[]) =
 
     // otherwise run the program
     else
-        matchParameters(args)
+        matchArgs(args)
         0
